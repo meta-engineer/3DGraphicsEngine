@@ -1,0 +1,113 @@
+void View::drawPoly(int x1, int y1, int x2, int y2, int x3, int y3,
+                    Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
+    if (myRenderMode == NO_RENDER) return;
+    if (myRenderMode == FILLED || myRenderMode == FILLED_WIREFRAME){
+
+    // QUICK F1X
+    int minY = std::min(y1, std::min(y2, y3));
+    int maxY = std::max(y1, std::max(y2, y3));
+
+    int minX = std::min(x1, std::min(x2, x3)) + 1;
+    int maxX = std::max(x1, std::max(x2, x3)) - 1;
+
+
+    line f1 = {x1 == x2, 0, (float)x1};
+    if (f1.v == 0) {
+        f1.m = ((float)(y1 - y2)) / ((float)(x1 - x2));
+        f1.b = y1 - (f1.m * x1);
+    }
+
+    line f2 = {x2 == x3, 0, (float)x2};
+    if (f2.v == 0) {
+        f2.m = ((float)(y2 - y3)) / ((float)(x2 - x3));
+        f2.b = y2 - (f2.m * x2);
+    }
+
+    line f3 = {x3 == x1, 0, (float)x3};
+    if (f3.v == 0) {
+        f3.m = ((float)(y3 - y1)) / ((float)(x3 - x1));
+        f3.b = y3 - (f3.m * x3);
+    }
+
+    SDL_SetRenderDrawColor(myRenderer, r, g, b, a);
+    // cant handle this much nested looping in time?
+    if (minX < 0) minX = 0;
+    if (maxX > SCREEN_WIDTH) maxX = SCREEN_WIDTH;
+    for (int i = minX; i <= maxX; i++) {
+        int a = (f1.b + (f1.m * i));
+        if (a < 0) a = 0;
+        else if (a > SCREEN_HEIGHT) a = SCREEN_HEIGHT;
+        int b = (f2.b + (f2.m * i));
+        if (b < 0) b = 0;
+        else if (b > SCREEN_HEIGHT) b = SCREEN_HEIGHT;
+        int c = (f3.b + (f3.m * i));
+        if (c < 0) c = 0;
+        else if (c > SCREEN_HEIGHT) c = SCREEN_HEIGHT;
+        // if vertical line a/b/c = x intercept + (0x)
+        // otherwise it is the true y value;
+
+        //all vertical lines
+        if (f1.v != 0 && f2.v != 0 && f3.v != 0) {
+            SDL_RenderDrawLine(myRenderer, i, minY, i, maxY);
+        // individual vertical lines
+        } else if (f1.v != 0) {
+            SDL_RenderDrawLine(myRenderer, i, b, i, c);
+            //std::cout << "vertical side 1" << std::endl;
+        } else if (f2.v != 0) {
+            SDL_RenderDrawLine(myRenderer, i, a, i, c);
+            //std::cout << "vertical side 2" << std::endl;
+        } else if (f3.v != 0) {
+            SDL_RenderDrawLine(myRenderer, i, a, i, b);
+            //std::cout << "vertical side 3" << std::endl;
+        } else {
+                 if (a < minY || a > maxY) SDL_RenderDrawLine(myRenderer, i, b, i, c);
+            else if (b < minY || b > maxY) SDL_RenderDrawLine(myRenderer, i, c, i, a);
+            else if (c < minY || c > maxY) SDL_RenderDrawLine(myRenderer, i, a, i, b);
+            else {  // obtuse tri, all function intercepts are within bounds, ambiguous
+                //always use middle value
+                //use value of line with slope closer to middle value's line
+                int midV = std::max( std::min(a, b), std::max( std::min(b, c), std::min(a, c)));
+                //std::cout << a << ", " << b << ", " << c << " select: " << midV << std::endl;
+
+                if (midV == a) {
+                    if (std::abs(f1.m - f2.m) < std::abs(f1.m - f3.m)) {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, b);
+                    } else {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, c);
+                    }
+                } else if (midV == b) {
+                    if (std::abs(f2.m - f3.m) < std::abs(f2.m - f1.m)) {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, c);
+                    } else {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, a);
+                    }
+
+                } else if (midV == c) {
+                    if (std::abs(f3.m - f1.m) < std::abs(f3.m - f2.m)) {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, a);
+                    } else {
+                        SDL_RenderDrawLine(myRenderer, i, midV, i, b);
+                    }
+
+                } else std::cout << "HOW??" << std::endl;
+            }
+        }
+
+    }
+
+    }
+
+    if (myRenderMode == FILLED_WIREFRAME) {
+        // correct tri frame
+        SDL_SetRenderDrawColor(myRenderer, 255, 255, 255, 255);
+        SDL_RenderDrawLine(myRenderer, x1, y1, x2, y2);
+        SDL_RenderDrawLine(myRenderer, x2, y2, x3, y3);
+        SDL_RenderDrawLine(myRenderer, x3, y3, x1, y1);
+    } else if (myRenderMode == WIREFRAME) {
+        // correct tri frame
+        SDL_SetRenderDrawColor(myRenderer, r, g, b, a);
+        SDL_RenderDrawLine(myRenderer, x1, y1, x2, y2);
+        SDL_RenderDrawLine(myRenderer, x2, y2, x3, y3);
+        SDL_RenderDrawLine(myRenderer, x3, y3, x1, y1);
+    }
+}
